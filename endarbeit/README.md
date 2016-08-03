@@ -393,11 +393,12 @@ SQL file in Docker Folder kopieren.
 ```bash
 cp /$ROOT_DIRECTORY/data/sql/vugis.sql $ROOT_DIRECTORY/data/docker
 ```
+
 ### Import
 
 ip: 172.17.0.2
 user: postgres
-pw: rakim
+pw: wie eingestellt
 
 ```bash
 POSTGRES_PASSWORD=YOUR_PASSWORD
