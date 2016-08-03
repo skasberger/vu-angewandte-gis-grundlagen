@@ -118,7 +118,7 @@ Um dies nutzen zu können, muss lediglich die Verbindung zur lokalen Datenbank b
 Die [Bezirksgrenzen Graz](https://github.com/species/OGD-Graz-Daten/blob/master/Bezirksgrenzen/Bezirksgrenzen.geojson) von Species GitHub Repo als geojson runterladen. Der WFS Service des Open Government Data Portals der Stadt Graz geht nämlich leider gerade nicht.
 
 Die geojson-Datei in QGIS importieren (Drag & Drop) und als Shape-Datei speichern bzw. direkt in die postgreSQL Datenbank importieren.
-![QGIS](assets/images/endarbeit/export-geojson.png)
+![QGIS](/assets/images/endarbeit/export-geojson.png)
 
 Das Shape-File via [shp2pgsql](http://www.geoportal.rlp.de/mediawiki/index.php/Shp2pgsql) in die PostGIS Datenbank importieren. Dabei muss explizit das CRS angegeben werden (31256). Bei den  Imports mit shp2pgsql ist immer auf das Koordinaten-System der Datei zu achten, dies ist bei den späteren Verwendungen zu beachten.
 
@@ -133,7 +133,7 @@ CREATE TABLE data.bezirksgrenze_gries AS SELECT * FROM data_raw.bezirksgrenzen W
 
 Gries als Shape File exportieren.
 
-![geoJSON als Shape exportieren](assets/images/endarbeit/export-geojson.png)
+![geoJSON als Shape exportieren](/assets/images/endarbeit/export-geojson.png)
 Bild: Export der geoJSON Datei als Shape-File
 
 ### OpenStreetMap Daten (Kebab Restaurants) importieren
@@ -145,7 +145,7 @@ BBOX="15.402231216430662,47.034800577106964,15.452785491943358,47.07509065142444
 wget --progress=dot:mega -O "$ROOT_DIRECTORY/data/raw/osm/bbox.osm" "http://www.overpass-api.de/api/xapi?*[bbox=${BBOX}][@meta]"
 ```
 
-![Download OpenStreetMap Daten](assets/images/endarbeit/download-osm-data.png)
+![Download OpenStreetMap Daten](/assets/images/endarbeit/download-osm-data.png)
 Bild: Download der OpenStreetMap Boundary Box (bbox).
 
 Das Tool [osm2pgsql](http://learnosm.org/en/osm-data/osm2pgsql/) installieren und die Style File anpassen. Es werden folgende Attribute der OpenStreetMap Datenbank für die weiteren Analysen gebraucht:
@@ -155,7 +155,7 @@ Das Tool [osm2pgsql](http://learnosm.org/en/osm-data/osm2pgsql/) installieren un
 - cuisine
 - amenity
 
-![bbox Strassengraph](assets/images/endarbeit/bbox-strassengraph.png)
+![bbox Strassengraph](/assets/images/endarbeit/bbox-strassengraph.png)
 Bild: Strassengraph der bbox nach pgRouting Import
 
 Die OpenStreetMap Daten werden dann mittels osm2pgsql in die PostGIS Datenbank importiert.
@@ -180,7 +180,7 @@ ALTER TABLE osm.bbox_point_31256
   USING ST_Transform(way, 31256);
 ```
 
-![OpenStreetMap Points der bbox](assets/images/endarbeit/bbox-points.png)
+![OpenStreetMap Points der bbox](/assets/images/endarbeit/bbox-points.png)
 Bild: OpenStreetMap Daten am Beispiel der Point Tabelle.
 
 Als nächstes werden, mittels eines Spatial Query in PostGIS, die Punkte aus Gries ausgewählt.
@@ -188,7 +188,7 @@ Als nächstes werden, mittels eines Spatial Query in PostGIS, die Punkte aus Gri
 CREATE TABLE osm.gries_point_31256 AS SELECT * FROM osm.bbox_point_31256, data.bezirksgrenze_gries WHERE ST_WITHIN(way, data.bezirksgrenze_gries.geom);
 ```
 
-![Points Gries](assets/images/endarbeit/gries-points.png)
+![Points Gries](/assets/images/endarbeit/gries-points.png)
 Bild: Points im Bezirk Gries
 
 Nun muss noch nach cuisine = kebab in all seinen Varianten gefiltert werden. postgreSQL Query:
@@ -196,7 +196,7 @@ Nun muss noch nach cuisine = kebab in all seinen Varianten gefiltert werden. pos
 CREATE TABLE osm.gries_kebab_31256 AS SELECT * FROM osm.gries_point_31256 WHERE cuisine = 'kebab' OR cuisine = 'kebab,pizza' OR cuisine = 'kebab;pizza' OR cuisine = 'kebab;pizza;ice_cream' OR cuisine = 'kebap, pizza' OR cuisine = 'kebap,pizza' OR cuisine = 'kebap;pizza';
 ```
 
-![alt text](assets/images/endarbeit/kebab-restaurants.png)
+![alt text](/assets/images/endarbeit/kebab-restaurants.png)
 Bild: Kebab Restaurants im Bezirk Gries
 
 ### OpenStreetMap Daten (Strassengraph) importieren
@@ -223,7 +223,7 @@ Um die ways Tabelle auf den Raum Gries einzugrenzen wird zuerst ein Buffer mit 2
 CREATE TABLE data.bezirksgrenze_gries_buffer AS SELECT ST_Buffer(geom,200) AS geom FROM data.bezirksgrenze_gries;
 ```
 
-![alt text](assets/images/endarbeit/gries-buffer-ways.png)
+![alt text](/assets/images/endarbeit/gries-buffer-ways.png)
 Bild: Der erweiterte Buffer-Bereich rund um die Bezirksgrenze von Gries.
 
 Damit später Spatial Queries ([ST_WITHIN](http://postgis.net/docs/ST_Within.html)) gemacht werden können, muss noch das Koordinaten-System der ways Tabelle transformiert ([ST_TRANSFORM](http://postgis.net/docs/ST_Transform.html)) werden (SRID = 31256). Dazu wird die bestehende Tabelle kopiert und die Geometrie danach abgeändert - alles in PostGIS.
@@ -237,7 +237,7 @@ ALTER TABLE osm.bbox_ways_31256
   USING ST_Transform(the_geom, 31256);
 ```
 
-![OpenStreetMap bbox Ways](assets/images/endarbeit/bbox-ways.png)
+![OpenStreetMap bbox Ways](/assets/images/endarbeit/bbox-ways.png)
 Bild: OpenStreetMap Daten am Beispiel der osm.bbox_ways Tabelle.
 
 Zuerst müssen wir auch hier wieder die Geometrien in das CRS 31256 transformieren.
@@ -263,7 +263,7 @@ CREATE TABLE osm.gries_ways_clean_31256 AS SELECT gid::integer AS id, class_id, 
 
 Fertiges Dateset in QGIS.
 
-![Gries OpenStreetMap Ways](assets/images/endarbeit/gries-ways.png)
+![Gries OpenStreetMap Ways](/assets/images/endarbeit/gries-ways.png)
 Bild: OpenStreetMap Daten am Beispiel der osm.gries_ways_31256 Tabelle.
 
 ## 4. ERREICHBARKEIT BERECHNEN
@@ -375,10 +375,10 @@ CREATE TABLE osm.catchment_kebab_final_31256 AS
   GROUP BY id, the_geom;
 ```
 
-![Strassengraph-Knoten mit Kosten](assets/images/endarbeit/costs-points.png)
+![Strassengraph-Knoten mit Kosten](/assets/images/endarbeit/costs-points.png)
 Bild: Die Knoten des Strassengraphen mit der minimalen Distance dargestellt (abgestuft in 5, 10, 20, 30 und 60min).
 
-![Strassengraph-Knoten mit Kosten](assets/images/endarbeit/costs-points-groß.png)
+![Strassengraph-Knoten mit Kosten](/assets/images/endarbeit/costs-points-groß.png)
 Bild: Die Knoten des Strassengraphen mit der minimalen Distance in Nahaufnahme (abgestuft in 5, 10, 20, 30 und 60min).
 
 ## 5. ERSTELLEN DES DOCKER IMAGES
@@ -432,35 +432,35 @@ docker exec $DOCKER_IMAGE_ID cat /etc/hosts
 ## 6. KARTE ERSTELLEN
 QGIS öffnen. 31256 ist das CRS.
 
-![QGIS](assets/images/endarbeit/qgis-leer.png)
+![QGIS](/assets/images/endarbeit/qgis-leer.png)
 Bild: QGIS nach dem Starten.
 
 Verbindung mit dem Docker Container aufbauen.
 
-![Docker Verbindung](assets/images/endarbeit/docker-verbindung.png)
+![Docker Verbindung](/assets/images/endarbeit/docker-verbindung.png)
 Bild: Verbindung zur postgreSQL Datenbank des Docker Containers aufbauen.
 
 Die [Orthophotos Graz](http://data.graz.gv.at/daten/package/orthophotos) als Hintergrund laden.
 
-![Orthophotos Graz](assets/images/endarbeit/orthophoto-graz.png)
+![Orthophotos Graz](/assets/images/endarbeit/orthophoto-graz.png)
 Bild: Importieren des Orthophoto Graz als Hintergrund-Layer.
 
 Bezirksgrenze Gries importieren und mit dicken Aussengrenzen sowie transparenter Füllung darstellen
 
-![Bezirksgrenze Gries](assets/images/endarbeit/gries.png)
+![Bezirksgrenze Gries](/assets/images/endarbeit/gries.png)
 Bild: Die Bezirksgrenze von Gries.
 
 Strassen importieren und passend anzeigen
 
-![Gries OpenStreetMap Ways](assets/images/endarbeit/gries-ways.png)
+![Gries OpenStreetMap Ways](/assets/images/endarbeit/gries-ways.png)
 Bild: Strassengraph nach osm2pgrouting Import.
 
-![Gries OpenStreetMap Ways Nahaufnahme](assets/images/endarbeit/gries-ways-groß.png)
+![Gries OpenStreetMap Ways Nahaufnahme](/assets/images/endarbeit/gries-ways-groß.png)
 Bild: Strassengraph nach osm2pgrouting Import in Nahaufnahme.
 
 Kebab Restaurants importieren und passend anzeigen
 
-![Kebab Restaurants Gries](assets/images/endarbeit/kebab-restaurants.png)
+![Kebab Restaurants Gries](/assets/images/endarbeit/kebab-restaurants.png)
 Bild: Kebab Restaurants in Gries.
 
 Catchment Areas berechnen und darstellen
@@ -475,27 +475,27 @@ Um die Erreichbarkeit für Fußgänger darstellen zu können, muss zuerst die Di
 | 30 | 2000 |
 | 60 | 4000 |
 
-![alt text](assets/images/endarbeit/)
+![alt text](/assets/images/endarbeit/)
 Bild: Einstellung Plugin
 
-![Catchment Area](assets/images/endarbeit/catchment-tiff.png)
+![Catchment Area](/assets/images/endarbeit/catchment-tiff.png)
 Bild: Catchment Areas nach Berechnung
 
-![Einstellungen Kontur-Plugin](assets/images/endarbeit/catchment-contour-settings.png)
+![Einstellungen Kontur-Plugin](/assets/images/endarbeit/catchment-contour-settings.png)
 Bild: Einstellung der Kontur-Linien
 
-![Catchment Area mit Kontur-Linien](assets/images/endarbeit/catchment-countours.png)
+![Catchment Area mit Kontur-Linien](/assets/images/endarbeit/catchment-countours.png)
 Bild: Catchment Areas mit Kontur-Linien
 
 Erstellen einer Druckzusammenstellung.
 
 SCREENSHOT QGIS
-![alt text](assets/images/endarbeit/)
+![alt text](/assets/images/endarbeit/)
 Bild:
 
 Export als PDF, PNG und SVG
 
-![alt text](assets/images/endarbeit/)
+![alt text](/assets/images/endarbeit/)
 Bild: SVG oder PNG Export des Ergebnisses
 
 ## SONSTIGES
