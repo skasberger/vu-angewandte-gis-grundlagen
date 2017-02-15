@@ -5,7 +5,7 @@ Dies ist die Endarbeit der Lehrveranstaltung VU Angewandte GIS-Grundlagen.
 
 Die Aufgabenstellung wurde selber ausgearbeítet. Ziel war es, den kompletten Datenverarbeitungsprozess durch die Erstellung, Nutzung und Analyse von räumlichen Informationen anhand von OpenStreetMap zu erlernen. Dadurch sollte der gesellschaftliche Nutzen von Open Data und Open Source durch den kompletten Daten-Zyklus sichtbar gemacht und auch selber gleich dazu beigetragen werden.
 
-Bei der Aufgabe wurden anhand von Open Government Data und OpenStreetMap Daten der kompletten Lebenszyklus von Daten, von der Erstellung bis zur wissenschaftlichen Analyse dargelegt. Zu Beginn wurde mit Map your Hood eine OpenStreetMap Mapping Party organisiert, wo Daten zu Kebab-Restaurants im Bezirk Gries in Graz im Gelände gesammelt und dann in die OpenStreetMap für alle zugänglich eingetragen wurde. Die so vervollständigten Daten wurden in einem weiteren Schritt runtergeladen und für eine Erreichbarkeits-Analyse für Fussgänger_innen mittels einer postgreSQL Datenbank mit räumlichen Erweiterungen verwaltet. Die finale Datenbank wurde dann in ein Docker-Image geladen und im Web geteilt, was ein einfaches nutzen und erweitern der Daten für andere ermöglicht.
+Bei der Aufgabe wurden anhand von Open Government Data und OpenStreetMap Daten der kompletten Lebenszyklus von Daten, von der Erstellung bis zur wissenschaftlichen Analyse dargelegt. Zu Beginn wurde mit Map your Hood eine OpenStreetMap Mapping-Party organisiert, wo Daten zu Kebab-Restaurants im Bezirk Gries in Graz im Gelände gesammelt und dann in die OpenStreetMap für alle zugänglich eingetragen wurde. Die so vervollständigten Daten wurden in einem weiteren Schritt runtergeladen und für eine Erreichbarkeits-Analyse für Fussgänger_innen in einer räumlichen Datenbank verwaltet. Die finalen Daten wurden dann in ein Docker-Image geladen und im Web geteilt, was ein einfaches nutzen und erweitern der Daten für andere ermöglicht.
 
 Zentrale Arbeitsgrundlage waren die Tutorials von [Anita Graser](https://anitagraser.com/) sowie Workshop-Materialien. Vielen Dank!
 - [pgRouting Workshop](http://workshop.pgrouting.org/index.html)
@@ -13,6 +13,8 @@ Zentrale Arbeitsgrundlage waren die Tutorials von [Anita Graser](https://anitagr
 - [A Beginners Guide to pgrouting](https://anitagraser.com/2011/02/07/a-beginners-guide-to-pgrouting/)
 - [Drive Time Isochrones – An Example Using Finnish Airports](https://anitagraser.com/2011/02/12/drive-time-isochrones/)
 - [Creating Catchment Areas with pgRouting and QGIS](https://anitagraser.com/2011/02/09/creating-catchment-areas-with-pgrouting-and-qgis/)
+
+Die unten angeführten Data-Processing Schritte (Punkt 3-5) können selber nachgemacht werden, da die finalen Daten aber im Docker-Image enthalten ist können auch gleich diese für die Visualisierung im Punkt 6  genutzt werden.
 
 **Inhalt**
 
@@ -58,11 +60,9 @@ Es wurden offene Daten aus folgenden Datenportalen verwendet:
 Alle Werke (Daten, Quellcode, Content) die in dieser Aufgabe verwendet oder erzeugt wurden, stehen unter einer freien Lizenz. Mehr Infos gibt es unter dem Punkt Urheber_innenrecht.
 
 ## 1. MAP YOUR HOOD
-OpenStreetMap Mapping Party im Bezirk Gries.
-Teilnehmer_innen: XX
-Was war das Ziel, was wurde gemacht.
+**[Map your Hood!](https://github.com/skasberger/map-your-hood)**: OpenStreetMap Mapping Party im Bezirk Gries in Graz. Es nahmen 13 Personen teil.
 
-Map your hood! war eine OpenStreetMap Mapping Party im Bezirk Gries in Graz, in dem Restaurants und Cafes gesammelt und in die OpenStreetMap eingetragen wurden. OpenStreetMap ist die Wikipedia für geographische Informationen, und steht somit allen frei zum Beitragen und Nutzen zur Verfügung. Zuerst gab es eine Einführung in den OpenStreetMap Editor [JOSM](https://josm.openstreetmap.de/), bevor es ins Gelände raus gegangen ist und die kulinarische Szene von Gries erfasst wurde. Die gesammelten Daten wurden am Ende gemeinsam in die OpenStreetMap eingetragen bevor die Ergebnisse auf [openstreetmap.org](http://openstreetmap.org/) betrachtet wurden.
+Map your hood! war eine OpenStreetMap Mapping Party im Bezirk Gries in Graz, bei der es um die Erfassung von ortsbezogenen Daten im Gelände und dem zugänglich-machen dieser für alle ging. OpenStreetMap ist die Wikipedia für geographische Informationen, und steht somit allen frei zum Beitragen und Nutzen zur Verfügung. Zuerst gab es eine Einführung in den OpenStreetMap Editor [JOSM](https://josm.openstreetmap.de/), bevor es ins Gelände raus gegangen ist und die kulinarische Szene von Gries erfasst wurde. Die gesammelten Daten wurden am Ende gemeinsam in die OpenStreetMap eingetragen bevor die Ergebnisse auf [openstreetmap.org](http://openstreetmap.org/) betrachtet wurden. Somit ging es um die Erfassung von ortsbezogenen Daten im Gelände und dem zugänglich-machen dieser.
 
 - Datum: 25. März 2016, 14-18 Uhr
 - Ort: Büro der Nachbarschaften, Gries, Graz
@@ -161,7 +161,7 @@ wget --progress=dot:mega -O "$ROOT_DIRECTORY/data/raw/osm/bbox.osm" "http://www.
 Bild: Download der OpenStreetMap Boundary Box (bbox).
 
 **OpenStreetMap Daten in postgres Datenbank importieren**
-Dazu das Tool [osm2pgsql](http://learnosm.org/en/osm-data/osm2pgsql/) installieren und die [Style File](apps/osm3pgsql/default.style) so anpassen. Dabei müssen folgende Attribute angegeben werden, damit diese zu den einzelnen Punkten importiert werden.
+Dazu das Tool [osm2pgsql](http://learnosm.org/en/osm-data/osm2pgsql/) installieren und die [Style File](apps/osm2pgsql/default.style) so anpassen. Dabei müssen folgende Attribute angegeben werden, damit diese zu den einzelnen Punkten importiert werden.
 - name
 - addr:housenumber
 - addr:street
@@ -440,6 +440,7 @@ Importieren des Dumps in postgreSQL des Docker-Containers.
 psql -U postgres -h postgres vugis < /data/vugis.sql
 ```
 
+Das Docker-Image beinhaltet somit alle notwendigen Daten um die folgenden Analysen durchführen zu können. Dies bedeutet, dass es ausreicht das Docker-Image runter zu laden und die darin enthaltenen Daten für die nun folgenden Analysen zu nutzen.
 
 ## 6. KARTE ERSTELLEN
 
@@ -549,6 +550,7 @@ Bild: Finale Karte Erreichbarkeits-Analyse.
 
 Die höher aufgelösten Orginal-Karten sind hier zu finden: [Orginal Karten](/endarbeit/images/)
 
+
 ## SONSTIGES
 
 ### Snippets
@@ -597,6 +599,12 @@ Der Quellcode wird zur Verfügung gestellt, unter der Hoffnung dass er nützlich
 
 Besuche [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT) um mehr über die MIT Lizenz zu erfahren.
 
+## Verwendete Daten
+Es wurden nur offene Daten verwendet:
+- OpenStreetMap via [Overpass API](http://overpass-api.de/): OpenStreetMap-Mitwirkende unter [Open Data Commons Open Database Lizenz (ODbL)](https://opendatacommons.org/licenses/odbl/).
+- [Orthophotos Graz](http://data.graz.gv.at/daten/package/orthophotos): Stadt Graz unter [Creative Commons Namensnennung 3.0 Österreich Lizenz](https://creativecommons.org/licenses/by/3.0/at/).
+- [Bezirksgrenzen Graz](https://github.com/species/OGD-Graz-Daten/blob/master/Bezirksgrenzen/Bezirksgrenzen.geojson): Stadt Graz unter [Creative Commons Namensnennung 3.0 Österreich Lizenz](https://creativecommons.org/licenses/by/3.0/at/).
+
 ## BEITRAGEN
 
 Im Sinne des Freien Software Gedankens ist jede_r eingeladen dieses Projekt zu verbessern.
@@ -614,11 +622,11 @@ Hier einige Möglichkeiten dazu beizutragen:
 - Pull Requests reviewen
 - Daten mit weiteren Daten anreichern
 
-Wenn du was machen willst, reiche einen [pull request](https://github.com/OKFNat/armScraper/pulls) ein.
+Wenn du was machen willst, reiche einen [pull request](https://github.com/skasberger/vu-angewandte-gis-grundlagen/pulls) ein.
 
 ### Issue erstellen
 
-Wir verwenden den [GitHub issue tracker](https://github.com/OKFNat/armScraper/issues) um Bugs und Features zu verwalten. Bevor du einen Bug Report oder einen Feature Request absendest, bitte nachsehen ob dies nicht bereits gemeldet worden ist. Wenn du einen Bug meldest füge bitte einen Screenshot hinzu um das Problem zu beschreiben.
+Wir verwenden den [GitHub issue tracker](https://github.com/skasberger/vu-angewandte-gis-grundlagen/issues) um Bugs und Features zu verwalten. Bevor du einen Bug Report oder einen Feature Request absendest, bitte nachsehen ob dies nicht bereits gemeldet worden ist. Wenn du einen Bug meldest füge bitte einen Screenshot hinzu um das Problem zu beschreiben.
 
 ## TODO
 - geojson to postgresql import
@@ -627,5 +635,6 @@ Wir verwenden den [GitHub issue tracker](https://github.com/OKFNat/armScraper/is
 - Funktion für Berechnung der Shortest Paths in die eine Liste an id's übergeben werden kann und die fertige Catchment Tabelle retour kommt.
 
 ## AUFBAU
-- [README.md](README.md): Übersicht zu Repo
-- [default.style](apps/osm3pgsql/default.style): Style File für pgrouting
+- [README.md](README.md): Übersicht zu Repo und Tutorial
+- [images/](images): Karten
+- [apps/osm2pgsql/default.style](apps/osm2pgsql/default.style): Style File für pgrouting-Import
