@@ -20,21 +20,22 @@ Die unten angeführten Data-Processing Schritte (Punkt 3-5) können selber nachg
 
 1. Map your Hood
 2. [Setup](#2-setup)
-3. [Daten aufbereiten](endarbeit/#3-daten-aufbereiten)
+3. [Daten aufbereiten](#3-daten-aufbereiten)
 	- Bezirksgrenze Gries importieren
 	- OpenStreetMap Daten (Kebab-Restaurants) importieren
 	- OpenStreetMap Daten (Strassengraph) importieren
-4. Erreichbarkeit berechnen
-5. Docker Image erstellen
-6. Karte erstellen
+4. [Erreichbarkeit berechnen](#4-erreichbarkeit-berechnen)
+5. [Docker Image erstellen](#5-docker-images-erstellen)
+6. [Karte erstellen](#6-karte-erstellen)
 	- Layer laden
 	- Catchment Areas darstellen
 	- Karte exportieren
-- Quellen
-- Urheber_innenrecht
-- Beitragen
-- Todo
-- Repository
+- [Sonstiges](#sonstiges)
+- [Quellen](#quellen)
+- [UrheberInnenrecht](#urheber_innenrecht)
+- [Beitragen](#beitragen)
+- [Todo](#todo)
+- [Repository](#repository)
 
 **Verwendete Software**
 
@@ -391,7 +392,7 @@ Bild: Die Punkte des Strassengraphen mit der minimalen Distance dargestellt (abg
 
 Bild: Die Knoten des Strassengraphen mit der minimalen Distance in Nahaufnahme (abgestuft in 5, 10, 20, 30 und 60 Minuten).
 
-## 5. DOCKER IMAGES ERSTELLEN
+## 5. DOCKER IMAGE ERSTELLEN
 
 ### Datenbank aus postgreSQL exportieren
 Die gesamte Datenbank in eine SQL Datei speichern, welche danach einfach importiert werden kann
@@ -632,7 +633,7 @@ Wir verwenden den [GitHub issue tracker](https://github.com/skasberger/vu-angewa
 - Shell Script für Bezirksgrenzen.geojson download
 - Funktion für Berechnung der Shortest Paths in die eine Liste an id's übergeben werden kann und die fertige Catchment Tabelle retour kommt.
 
-## AUFBAU
+## REPOSITORY
 - [README.md](README.md): Übersicht zu Repo und Tutorial
 - [images/](images): Karten
 - [apps/osm2pgsql/default.style](apps/osm2pgsql/default.style): Style File für pgrouting-Import
