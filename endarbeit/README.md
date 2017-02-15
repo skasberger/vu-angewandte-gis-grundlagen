@@ -15,17 +15,24 @@ Zentrale Arbeitsgrundlage waren die Tutorials von [Anita Graser](https://anitagr
 - [Creating Catchment Areas with pgRouting and QGIS](https://anitagraser.com/2011/02/09/creating-catchment-areas-with-pgrouting-and-qgis/)
 
 **Inhalt**
+
 1. Map your Hood
 2. Setup
 3. Daten aufbereiten
+	- Bezirksgrenze Gries importieren
+	- OpenStreetMap Daten (Kebab-Restaurants) importieren
+	- OpenStreetMap Daten (Strassengraph) importieren
 4. Erreichbarkeit berechnen
 5. Docker Image erstellen
 6. Karte erstellen
-- Beitragen
-- Urheber_innenrecht
-- Todo
+	- Layer laden
+	- Catchment Areas darstellen
+	- Karte exportieren
 - Quellen
-- Aufbau Repository
+- Urheber_innenrecht
+- Beitragen
+- Todo
+- Repository
 
 **Verwendete Software**
 
@@ -42,15 +49,15 @@ Zentrale Arbeitsgrundlage waren die Tutorials von [Anita Graser](https://anitagr
 **Verwendete Daten**
 
 Es wurden offene Daten aus folgenden Datenportalen verwendet:
-- [Orthophotos Graz](http://data.graz.gv.at/daten/package/orthophotos)
-- [Overpass API](http://overpass-api.de/)
-- [Bezirksgrenzen Graz](https://github.com/species/OGD-Graz-Daten/blob/master/Bezirksgrenzen/Bezirksgrenzen.geojson)
+- OpenStreetMap via [Overpass API](http://overpass-api.de/): OpenStreetMap-Mitwirkende unter [Open Data Commons Open Database Lizenz (ODbL)](https://opendatacommons.org/licenses/odbl/).
+- [Orthophotos Graz](http://data.graz.gv.at/daten/package/orthophotos): Stadt Graz unter [Creative Commons Namensnennung 3.0 Österreich Lizenz](https://creativecommons.org/licenses/by/3.0/at/).
+- [Bezirksgrenzen Graz](https://github.com/species/OGD-Graz-Daten/blob/master/Bezirksgrenzen/Bezirksgrenzen.geojson): Stadt Graz unter [Creative Commons Namensnennung 3.0 Österreich Lizenz](https://creativecommons.org/licenses/by/3.0/at/).
 
 **Urheber_innenrecht**
 
 Alle Werke (Daten, Quellcode, Content) die in dieser Aufgabe verwendet oder erzeugt wurden, stehen unter einer freien Lizenz. Mehr Infos gibt es unter dem Punkt Urheber_innenrecht.
 
-## 1. Map your Hood
+## 1. MAP YOUR HOOD
 OpenStreetMap Mapping Party im Bezirk Gries.
 Teilnehmer_innen: XX
 Was war das Ziel, was wurde gemacht.
@@ -134,21 +141,27 @@ CREATE TABLE data.bezirksgrenze_gries AS SELECT * FROM data_raw.bezirksgrenzen W
 Gries als Shape File exportieren.
 
 ![geoJSON als Shape exportieren](/assets/images/endarbeit/export-geojson.png)
+
 Bild: Export der geoJSON Datei als Shape-File
 
 ### OpenStreetMap Daten (Kebab Restaurants) importieren
 Beachte: Die Boundary Box sollte so klein wie möglich, aber so groß wie nötig gestaltet werden. Am besten ist es, einen kleinen Buffer Bereich rund um die benötigte Box zu machen (zB. 500m). Es werde dabei eh alle Geometrien, die innerhalb der Box sind und darüber hinausgehen runter geladen.
 
-- osm daten via [overpass turbo API](https://overpass-turbo.eu/) runter laden. Die API ermöglicht einem komfortables Runterladen von OpenStreetMap Daten innerhalb einer definierten Boundary Box. Diese kann natürlich nach den eigenen Bedürfnissen angepasst und so andere Räume runtergeladen werden. Somit ist dies der wichtigste Schritt um die folgenden Analysen auf andere Räume anzuwenden, da alle weiteren Schritte auf den Daten die hier runtergeladen werden aufbauen (bis auf natürlich die Bezirksgrenzen).
+**OpenStreetMap Daten runterladen**
+
+Die OpenStreetMap-Daten werden via [overpass turbo API](https://overpass-turbo.eu/) runtergeladen. Diese API ermöglicht komfortables Speichern von OpenStreetMap Daten innerhalb einer definierten Boundary Box. Diese kann nach eigenen Bedürfnissen angepasst und so andere "Rechtecke" runtergeladen werden.
+
 ```bash
 BBOX="15.402231216430662,47.034800577106964,15.452785491943358,47.07509065142444"
 wget --progress=dot:mega -O "$ROOT_DIRECTORY/data/raw/osm/bbox.osm" "http://www.overpass-api.de/api/xapi?*[bbox=${BBOX}][@meta]"
 ```
 
 ![Download OpenStreetMap Daten](/assets/images/endarbeit/download-osm-data.png)
+
 Bild: Download der OpenStreetMap Boundary Box (bbox).
 
-Das Tool [osm2pgsql](http://learnosm.org/en/osm-data/osm2pgsql/) installieren und die Style File anpassen. Es werden folgende Attribute der OpenStreetMap Datenbank für die weiteren Analysen gebraucht:
+**OpenStreetMap Daten in postgres Datenbank importieren**
+Dazu das Tool [osm2pgsql](http://learnosm.org/en/osm-data/osm2pgsql/) installieren und die [Style File](apps/osm3pgsql/default.style) so anpassen. Dabei müssen folgende Attribute angegeben werden, damit diese zu den einzelnen Punkten importiert werden.
 - name
 - addr:housenumber
 - addr:street
@@ -156,17 +169,17 @@ Das Tool [osm2pgsql](http://learnosm.org/en/osm-data/osm2pgsql/) installieren un
 - amenity
 
 ![bbox Strassengraph](/assets/images/endarbeit/bbox-strassengraph.png)
+
 Bild: Strassengraph der bbox nach pgRouting Import
 
-Die OpenStreetMap Daten werden dann mittels osm2pgsql in die PostGIS Datenbank importiert.
+Die OpenStreetMap Daten werden dann mittels osm2pgsql in die PostGIS Datenbank importiert. osm2pgsql legt dazu ein neues Schema mit dem Namen ```osm_raw``` an, die Tabellen haben alle den Präfix ```bbox_```.
 ```bash
 osm2pgsql -H localhost -p bbox -s -E 3857 -U postgres -d vugis -S $ROOT_DIRECTORY/apps/osm2pgsql/default.style /my-data/science/academia/vu-gis-grundlagen/endarbeit/data/raw/osm/bbox.osm
 ```
 
-Die importierten Tabellen in das OSM Schema in postgreSQL rüber kopieren.
+Die importierten Tabellen müssen nun noch in das OSM Schema ```public``` in postgreSQL rüber kopiert werden.
 ```sql
 DROP SCHEMA osm_raw CASCADE;
-
 SELECT clone_schema('public','osm_raw');
 ```
 
@@ -202,7 +215,7 @@ Bild: Kebab Restaurants im Bezirk Gries
 ### OpenStreetMap Daten (Strassengraph) importieren
 **mit osm2pgRouting**
 
-Die OpenStreetMap Daten in pgRouting importieren:
+Die OpenStreetMap Daten in pgRouting in das Schema ```osm_pg_raw``` importieren:
 ```bash
 osm2pgrouting --f $ROOT_DIRECTORY/data/raw/osm/bbox.osm --dbname vugis --username postgres --schema osm_pg_raw --clean
 ```
@@ -217,16 +230,16 @@ Folgende Tabellen werden dadurch erstellt:
 - ways => dies ist die routingfähige Tabelle
 - way_vertices_pgr
 
-Um die ways Tabelle auf den Raum Gries einzugrenzen wird zuerst ein Buffer mit 200m um die Bezirksgrenze von Gries gelegt, um direkt darum liegende Wege noch in die Berechnung miteinzubeziehen. Dies wird in PostGIS gemacht.
+Damit die später folgenden Berechnungen nicht unnötig viel Zeit benötigen, wird der Graph auf seine Mindestgröße reduziert, nämlich auf den Bezirk Gries. Dazu wird zuerst ein Buffer mit 200m um die Bezirksgrenze von Gries gelegt, um direkt darum liegende Wege des Strassengraphen noch in die Berechnung miteinzubeziehen. Dies wird in PostGIS gemacht.
 
 ```sql
 CREATE TABLE data.bezirksgrenze_gries_buffer AS SELECT ST_Buffer(geom,200) AS geom FROM data.bezirksgrenze_gries;
 ```
 
-![alt text](/assets/images/endarbeit/gries-buffer-ways.png)
+![alt text](/assets/images/endarbeit/gries-buffer.png)
 Bild: Der erweiterte Buffer-Bereich rund um die Bezirksgrenze von Gries.
 
-Damit später Spatial Queries ([ST_WITHIN](http://postgis.net/docs/ST_Within.html)) gemacht werden können, muss noch das Koordinaten-System der ways Tabelle transformiert ([ST_TRANSFORM](http://postgis.net/docs/ST_Transform.html)) werden (SRID = 31256). Dazu wird die bestehende Tabelle kopiert und die Geometrie danach abgeändert - alles in PostGIS.
+Damit später Spatial Queries ([ST_WITHIN](http://postgis.net/docs/ST_Within.html)) gemacht werden können, muss noch das Koordinaten-System der ```ways``` und der ```ways_vertices_pgr``` Tabelle transformiert ([ST_TRANSFORM](http://postgis.net/docs/ST_Transform.html)) werden (SRID = 31256). Dazu werden die bestehenden Tabellen kopiert und die Geometrie danach abgeändert - alles in PostGIS.
 
 ```sql
 CREATE TABLE osm.bbox_ways_31256 AS SELECT * FROM osm_pg_raw.ways;
@@ -235,13 +248,7 @@ ALTER TABLE osm.bbox_ways_31256
   ALTER COLUMN the_geom
   TYPE Geometry(LineString, 31256)
   USING ST_Transform(the_geom, 31256);
-```
 
-![OpenStreetMap bbox Ways](/assets/images/endarbeit/bbox-ways.png)
-Bild: OpenStreetMap Daten am Beispiel der osm.bbox_ways Tabelle.
-
-Zuerst müssen wir auch hier wieder die Geometrien in das CRS 31256 transformieren.
-```sql
 CREATE TABLE osm.bbox_ways_vertices_pgr_31256 AS SELECT * FROM osm_pg_raw.ways_vertices_pgr;
 
 ALTER TABLE osm.bbox_ways_vertices_pgr_31256
@@ -256,22 +263,21 @@ CREATE TABLE osm.gries_ways_31256 AS SELECT * FROM osm.bbox_ways_31256, data.bez
 CREATE TABLE osm.gries_ways_vertices_pgr_31256 AS SELECT * FROM osm.bbox_ways_vertices_pgr_31256, data.bezirksgrenze_gries_buffer WHERE ST_WITHIN(the_geom, data.bezirksgrenze_gries_buffer.geom);
 ```
 
-Bereinigen der Spalten bevor man Shortest Path Routing Algorithmen verwendet.
+Damit später der Shortest Path Algorithmus verwendet werden kann, müssen die Spalten der Tabelle noch in die korrekten Datentypen konvertiert werden.
 ```sql
 CREATE TABLE osm.gries_ways_clean_31256 AS SELECT gid::integer AS id, class_id, length, length_m, name, source::integer, target::integer, x1, y1, x2, y2, cost::double precision, reverse_cost, cost_s, reverse_cost_s, rule, one_way, maxspeed_forward, maxspeed_backward, osm_id, source_osm, target_osm, priority, the_geom FROM osm.gries_ways_31256;
 ```
 
-Fertiges Dateset in QGIS.
+Danach ist der Strassengraph für die Netzwerk-Analyse fertig und sieht so aus.
 
 ![Gries OpenStreetMap Ways](/assets/images/endarbeit/gries-ways.png)
-Bild: OpenStreetMap Daten am Beispiel der osm.gries_ways_31256 Tabelle.
+Bild: Darstellung des bereinigten Strassengraphen ```gries_ways_vertices_pgr_31256``` und ```gries_ways_clean_31256```.
 
 ## 4. ERREICHBARKEIT BERECHNEN
 
-Um die Catchment Area darstellen zu können, muss die kürzeste Distanz aller Shortest Paths zwischen den Kebab-Restaurants und allen Knoten des Strassengraphen berechnet werden.
+Um die Catchment-Area berechnen zu können, muss die kürzeste Distanz zwischen allen Punkten im Strassengraphen berechnet werden.
 
-Zuerst muss zu jedem Kebab-Restaurant der am nächsten gelegene Knoten des Strassengraphen gefunden werden. Dessen osm_id wird dann als osm.gries_kebab_31256.nearest_node_osm_id abgespeichert.
-[ST_DISTANCE](http://postgis.net/docs/ST_Distance.html)
+Dazu muss zuerst zu jedem Kebab-Restaurant-Punkt der am nächsten gelegene Knoten des Strassengraphen ([ST_DISTANCE](http://postgis.net/docs/ST_Distance.html)) gefunden werden, da die beiden Layer/Tabellen nicht miteinander verbunden oder ident sind. Die gefundene osm_id wird dann als ```osm.gries_kebab_31256.nearest_node_osm_id``` abgespeichert.
 ```sql
 CREATE TABLE osm.temp AS
  	SELECT a.osm_id AS kebab_osm_id, b.vertice_osm_id, min(a.dist) FROM (
@@ -296,7 +302,7 @@ SET nearest_node_osm_id =
 DROP TABLE osm.temp;
 ```
 
-Die gefundenen Knoten werden nun für als Start-Knoten für den [Dijkstra Shortest Path Algorithmus](http://docs.pgrouting.org/2.2/en/src/dijkstra/doc/pgr_dijkstra.html#pgr-dijkstra) übergeben. Um das Ergebnis einfach verwenden zu können, wird als Kosten gleich die Länge in Metern übergeben.
+Die gefundenen Knoten werden nun als Start-Knoten für den [Dijkstra Shortest Path Algorithmus](http://docs.pgrouting.org/2.2/en/src/dijkstra/doc/pgr_dijkstra.html#pgr-dijkstra) übergeben. Dieser berechnet nun für jedes Kebab-Restaurant den kürzesten Weg zu sämtlichen Punkten (Knoten) im Strassengraphen. Um das Ergebnis verwenden zu können, wird als Cost gleich die Länge in Metern übergeben.
 
 | name                 | osm_id          | nearest_node_osm_id     | nearest_node_id |
 | -------------------- | --------------- | ----------------------- | --------------- |
@@ -368,107 +374,121 @@ INSERT INTO osm.catchment_kebab_31256 (
 	) AS cost, the_geom FROM osm.gries_ways_vertices_pgr_31256);
 ```
 
-Aus den verschiedenen Werten die ein jeder Strassen-Knoten bei den Berechnungen oben bekommen hat, muss nun noch der minimalste gefunden und in eine eigene Tabelle gespeichert werden.
+Als Ergebnis bekommt man für jeden Punkt im Strassengraphen einen Werte je Kebab-Restaurant (8 Stück), welcher die Distanz (Cost) in Metern zwischen dem einzelnen Punkt und dem jeweiligen Kebab-Restaurant darstellt. Wir wollen aber nur die Distanz eines Punktes zum nächstgelegenen Kebab-Restaurant, weshalb zum Schluss noch der kleinste Wert für jeden Punkt im Strassengraph ausgewählt werden muss.
 ```sql
 CREATE TABLE osm.catchment_kebab_final_31256 AS
   SELECT id, the_geom, min(cost) AS cost FROM osm.catchment_kebab_31256
   GROUP BY id, the_geom;
 ```
 
+Das Ergebnis sieht dann wie folgt aus:
+
 ![Strassengraph-Knoten mit Kosten](/assets/images/endarbeit/costs-points.png)
-Bild: Die Knoten des Strassengraphen mit der minimalen Distance dargestellt (abgestuft in 5, 10, 20, 30 und 60min).
+
+Bild: Die Punkte des Strassengraphen mit der minimalen Distance dargestellt (abgestuft in 5, 10, 20, 30 und 60 Minuten).
 
 ![Strassengraph-Knoten mit Kosten](/assets/images/endarbeit/costs-points-groß.png)
-Bild: Die Knoten des Strassengraphen mit der minimalen Distance in Nahaufnahme (abgestuft in 5, 10, 20, 30 und 60min).
 
-## 5. ERSTELLEN DES DOCKER IMAGES
+Bild: Die Knoten des Strassengraphen mit der minimalen Distance in Nahaufnahme (abgestuft in 5, 10, 20, 30 und 60 Minuten).
 
-### Datenbank exportieren
-Die gesamte Datenbank in eine SQL Datei dumpen, welche danach einfach Importiert werden kann
+## 5. DOCKER IMAGES ERSTELLEN
+
+### Datenbank aus postgreSQL exportieren
+Die gesamte Datenbank in eine SQL Datei speichern, welche danach einfach importiert werden kann
 ```bash
 pg_dump -h localhost -U postgres -d vugis > $ROOT_DIRECTORY/data/sql/vugis.sql
 ```
 
-SQL file in Docker Folder kopieren.
+SQL-Datei in Docker-Ordner kopieren.
 ```bash
 cp /$ROOT_DIRECTORY/data/sql/vugis.sql $ROOT_DIRECTORY/data/docker
 ```
 
-### Import
+### Importieren der SQL File in Docker
 
-ip: 172.17.0.2
-user: postgres
-pw: wie eingestellt
+User: postgres
+
+Wie findet man die IP raus mittels DOCKER_IMAGE_ID?
+```bash
+docker exec $DOCKER_IMAGE_ID cat /etc/hosts
+```
+
+Passwort: wie eingestellt.
 
 ```bash
 POSTGRES_PASSWORD=YOUR_PASSWORD
 DOCKER_IMAGE_ID=YOUR_IMAGE_ID
 ```
 
-start pgrouting container as daemon
+Starten des pgrouting Docker-Containers als daemon:
 ```bash
 docker run --name pgrouting-daemon-2 -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -d starefossen/pgrouting
 ```
 
-start postgresql in shell
+Starten von postgreSQL von Docker-Container in Shell:
 ```bash
 docker run -it --link pgrouting-daemon-2:postgres -v /my-data/science/academia/vu-gis-grundlagen/endarbeit/data/docker:/data --rm postgres /bin/bash
 ```
 
-Create vugis Datenbank
+Erstellen der vugis Datenbank in postgreSQL in Docker-Container:
 ```bash
 psql -U postgres -h postgres -c "CREATE DATABASE vugis"
 ```
 
-Importieren des Dumps.
+Importieren des Dumps in postgreSQL des Docker-Containers.
 ```bash
 psql -U postgres -h postgres vugis < /data/vugis.sql
 ```
 
-Wie findet man die IP raus?
-```bash
-docker exec $DOCKER_IMAGE_ID cat /etc/hosts
-```
 
 ## 6. KARTE ERSTELLEN
-QGIS öffnen. 31256 ist das CRS.
+
+### Layer laden
+QGIS öffnen und 31256 als CRS einstellen.
 
 ![QGIS](/assets/images/endarbeit/qgis-leer.png)
+
 Bild: QGIS nach dem Starten.
 
-Verbindung mit dem Docker Container aufbauen.
+Dann Verbindung mit dem Docker Container aufbauen.
 
 ![Docker Verbindung](/assets/images/endarbeit/docker-verbindung.png)
+
 Bild: Verbindung zur postgreSQL Datenbank des Docker Containers aufbauen.
 
-Die [Orthophotos Graz](http://data.graz.gv.at/daten/package/orthophotos) als Hintergrund laden.
+[Orthophotos Graz](http://data.graz.gv.at/daten/package/orthophotos) als Hintergrund laden. Dazu ist eine WMS-Verbindung mit dem Server der Stadt Graz aufzubauen.
 
 ![Orthophotos Graz](/assets/images/endarbeit/orthophoto-graz.png)
+
 Bild: Importieren des Orthophoto Graz als Hintergrund-Layer.
 
-Bezirksgrenze Gries importieren und mit dicken Aussengrenzen sowie transparenter Füllung darstellen
+Danach die Bezirksgrenze Gries aus der postgreSQL-Datenbank importieren und mit dicken Aussengrenzen sowie transparenter Füllung darstellen
 
 ![Bezirksgrenze Gries](/assets/images/endarbeit/gries.png)
+
 Bild: Die Bezirksgrenze von Gries.
 
-Strassen importieren und passend anzeigen
+Den Strassengraph aus der Datenbank importieren und passend anzeigen.
 
 ![Gries OpenStreetMap Ways](/assets/images/endarbeit/gries-ways.png)
-Bild: Strassengraph nach osm2pgrouting Import.
+
+Bild: Strassengraph aus postgreSQL.
 
 ![Gries OpenStreetMap Ways Nahaufnahme](/assets/images/endarbeit/gries-ways-groß.png)
-Bild: Strassengraph nach osm2pgrouting Import in Nahaufnahme.
 
-Kebab Restaurants importieren und passend anzeigen
+Bild: Strassengraph in Nahaufnahme.
+
+Die Kebab Restaurants importieren und passend anzeigen.
 
 ![Kebab Restaurants Gries](/assets/images/endarbeit/kebab-restaurants.png)
+
 Bild: Kebab Restaurants in Gries.
 
-Catchment Areas berechnen und darstellen
+### Catchment Areas darstellen
 
 Um die Erreichbarkeit für Fußgänger darstellen zu können, muss zuerst die Distanz die in den jeweiligen Zeiten gegangen werden errechnet werden. Bei einer Durchschnittsgeschwindigkeit von 4km/h bedeutet dies:
 
-| min | meter |
+| Minuten | Meter |
 | --- | --- |
 | 5 | 333 |
 | 10 | 666 |
@@ -476,28 +496,58 @@ Um die Erreichbarkeit für Fußgänger darstellen zu können, muss zuerst die Di
 | 30 | 2000 |
 | 60 | 4000 |
 
-![alt text](/assets/images/endarbeit/)
-Bild: Einstellung Plugin
+Zur Erstellung der Catchment-Areas wird das Interpolations-Plugin verwendet. Dieses muss wie folgt eingestellt werden:
+
+- Vector layers: catchment_kebab_final_31256
+- Interpolation attribute: cost
+- "Add" button klicken um das Attribut hinzuzufügen.
+- Output file angeben.
+
+![Einstellungen Interpolations-Plugin](/assets/images/endarbeit/interpolation-settings.png)
+
+Bild: Einstellung Interpolations-Plugin.
+
+Das Ergebnis muss in etwa so aussehen:
 
 ![Catchment Area](/assets/images/endarbeit/catchment-tiff.png)
-Bild: Catchment Areas nach Berechnung
 
-![Einstellungen Kontur-Plugin](/assets/images/endarbeit/catchment-contour-settings.png)
+Bild: Catchment Areas durch Interpolations-Plugin
+
+Als nächster Schritt wollen wir Isobaren entlang der oben definierten Abständen errechnen. Dazu wird das Contour-Plugin mit folgenden Einstellungen verwendet:
+
+- Vector Layer: catchment_kebab_final_31256
+- Data field: cost
+- Number 5
+- Werte: siehe Tabelle oben (Meter bis zum nächsten Kebab-Restaurant).
+- Output Layer name: catchment_kebab_final_31256_cost
+
+![Einstellungen Contour-Plugin](/assets/images/endarbeit/catchment-contour-settings.png)
+
 Bild: Einstellung der Kontur-Linien
 
-![Catchment Area mit Kontur-Linien](/assets/images/endarbeit/catchment-countours.png)
-Bild: Catchment Areas mit Kontur-Linien
+Nach ausführen der Contour-Funktion sollten diskrete Linien zu den Metern bis zum nächsten Kebab-Restaurant erscheinen.
 
-Erstellen einer Druckzusammenstellung.
+![Catchment Area mit Contour-Linien](/assets/images/endarbeit/catchment-countours.png)
 
-SCREENSHOT QGIS
-![alt text](/assets/images/endarbeit/)
-Bild:
+Bild: Catchment Areas mit Kontur-Linien.
 
-Export als PDF, PNG und SVG
+Zu den Catchment-Areas wird am Ende noch der Strassengraph hinzugefügt um die Erreichbarkeit besser analyiseren zu können und das Styling der Kontouren angepasst.
+![Finale Karte](/assets/images/endarbeit/final-map.png)
 
-![alt text](/assets/images/endarbeit/)
-Bild: SVG oder PNG Export des Ergebnisses
+Bild: Catchment Areas mit Kontur-Linien, Strassengraph und Styling.
+
+### Karte exportieren
+Zum Schluss wird noch eine Druckzusammenstellung mit der finalen Karte erstellt..
+
+![Druckzusammenstellung](/assets/images/endarbeit/map-composer.png)
+
+Bild: Druckzusammenstellung
+
+Diese wird dann als SVG, PNG und PDF exportiert:
+![alt text](/assets/images/endarbeit/map.jpg)
+Bild: Finale Karte Erreichbarkeits-Analyse.
+
+Die höher aufgelösten Orginal-Karten sind hier zu finden: [Orginal Karten](/endarbeit/images/)
 
 ## SONSTIGES
 
@@ -516,6 +566,36 @@ Check pgRouting Version
 ```bash
 psql -U postgres -h localhost -d vugis -c "SELECT pgr_version()"
 ```
+
+## QUELLEN
+- [Docker](https://www.docker.com/)
+- [pgRouting Image](ttps://hub.docker.com/r/starefossen/pgrouting/)
+- [postgreSQL](https://www.postgresql.org/)
+- [osm2pgsql @ OSM Wiki](http://wiki.openstreetmap.org/wiki/Osm2pgsql)
+- [PostGIS](http://postgis.org/)
+- [PostGIS Tutorial](http://workshops.boundlessgeo.com/postgis-intro/)
+- [pgRouting](http://pgrouting.org/)
+- [osm2pgrouting](http://pgrouting.org/docs/tools/osm2pgrouting.html)
+- [osm2pgRouting @ OSM Wiki](http://wiki.openstreetmap.org/wiki/Osm2pgrouting)
+- [pgRouting Workshop](http://workshop.pgrouting.org/index.html)
+- [pgRouting Tutorial](http://workshops.boundlessgeo.com/tutorial-routing/)
+- [A Beginners Guide to pgrouting](https://anitagraser.com/2011/02/07/a-beginners-guide-to-pgrouting/)
+- [An osm2po Quickstart](https://anitagraser.com/2011/12/15/an-osm2po-quickstart/)
+- [OSM Advanced](https://anitagraser.com/2011/12/18/osm2po-part-2-pgrouting-on-osm-the-easy-way/)
+- [Drive Time Isochrones – An Example Using Finnish Airports](https://anitagraser.com/2011/02/12/drive-time-isochrones/)
+- [Creating Catchment Areas with pgRouting and QGIS](https://anitagraser.com/2011/02/09/creating-catchment-areas-with-pgrouting-and-qgis/)
+- [OGR](http://wiki.openstreetmap.org/wiki/OGR)
+- [Strassengraphen GIP von Anita Graser](https://anitagraser.com/projects/ogdwien-notizen/)
+
+## URHEBER_INNENRECHT
+
+Alle Werke sind offen lizenziert unter der [Creative Commons Namensnennung 4.0](http://creativecommons.org/licenses/by/4.0/) Lizenz, soweit nicht anders erwähnt.
+
+Der Quellcode ist freie Software: du kannst ihn verbreiten und/oder abändern unter den Bedingungen der MIT Lizenz.
+
+Der Quellcode wird zur Verfügung gestellt, unter der Hoffnung dass er nützlich ist, aber OHNE JEGLICHE HAFTUNG; auch ohne der implizierten Haftung der GEWÄHRLEISTUNG oder TAUGLICHKEIT FÜR EINEN BESTIMMTEN ZWECK.
+
+Besuche [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT) um mehr über die MIT Lizenz zu erfahren.
 
 ## BEITRAGEN
 
@@ -540,41 +620,12 @@ Wenn du was machen willst, reiche einen [pull request](https://github.com/OKFNat
 
 Wir verwenden den [GitHub issue tracker](https://github.com/OKFNat/armScraper/issues) um Bugs und Features zu verwalten. Bevor du einen Bug Report oder einen Feature Request absendest, bitte nachsehen ob dies nicht bereits gemeldet worden ist. Wenn du einen Bug meldest füge bitte einen Screenshot hinzu um das Problem zu beschreiben.
 
-## URHEBER_INNENRECHT
-
-Alle Werke sind offen lizenziert unter der [Creative Commons Namensnennung 4.0](http://creativecommons.org/licenses/by/4.0/) Lizenz, soweit nicht anders erwähnt.
-
-Der Quellcode ist freie Software: du kannst ihn verbreiten und/oder abändern unter den Bedingungen der MIT Lizenz.
-
-Der Quellcode wird zur Verfügung gestellt, unter der Hoffnung dass er nützlich ist, aber OHNE JEGLICHE HAFTUNG; auch ohne der implizierten Haftung der GEWÄHRLEISTUNG oder TAUGLICHKEIT FÜR EINEN BESTIMMTEN ZWECK.
-
-Besuche [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT) um mehr über die MIT Lizenz zu erfahren.
-
 ## TODO
 - geojson to postgresql import
 - update Funktion für die Daten im Docker Container
 - Shell Script für Bezirksgrenzen.geojson download
 - Funktion für Berechnung der Shortest Paths in die eine Liste an id's übergeben werden kann und die fertige Catchment Tabelle retour kommt.
 
-## QUELLEN
-- [Docker](https://www.docker.com/)
-- [pgRouting Image](ttps://hub.docker.com/r/starefossen/pgrouting/)
-- [postgreSQL](https://www.postgresql.org/)
-- [osm2pgsql @ OSM Wiki](http://wiki.openstreetmap.org/wiki/Osm2pgsql)
-- [PostGIS](http://postgis.org/)
-- [PostGIS Tutorial](http://workshops.boundlessgeo.com/postgis-intro/)
-- [pgRouting](http://pgrouting.org/)
-- [osm2pgrouting](http://pgrouting.org/docs/tools/osm2pgrouting.html)
-- [osm2pgRouting @ OSM Wiki](http://wiki.openstreetmap.org/wiki/Osm2pgrouting)
-- [pgRouting Workshop](http://workshop.pgrouting.org/index.html)
-- [pgRouting Tutorial](http://workshops.boundlessgeo.com/tutorial-routing/)
-- [A Beginners Guide to pgrouting](https://anitagraser.com/2011/02/07/a-beginners-guide-to-pgrouting/)
-- [An osm2po Quickstart](https://anitagraser.com/2011/12/15/an-osm2po-quickstart/)
-- [OSM Advanced](https://anitagraser.com/2011/12/18/osm2po-part-2-pgrouting-on-osm-the-easy-way/)
-- [Drive Time Isochrones – An Example Using Finnish Airports](https://anitagraser.com/2011/02/12/drive-time-isochrones/)
-- [Creating Catchment Areas with pgRouting and QGIS](https://anitagraser.com/2011/02/09/creating-catchment-areas-with-pgrouting-and-qgis/)
-- [OGR](http://wiki.openstreetmap.org/wiki/OGR)
-- [Strassengraphen GIP von Anita Graser](https://anitagraser.com/projects/ogdwien-notizen/)
-
 ## AUFBAU
 - [README.md](README.md): Übersicht zu Repo
+- [default.style](apps/osm3pgsql/default.style): Style File für pgrouting

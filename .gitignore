@@ -1,0 +1,16 @@
+*.sublime-project
+*.sublime-workspace
+venv
+*.pyc
+includes
+.project
+*.pyo
+*~
+*.db
+notes.md
+*.sql
+v1/
+exercise-*/
+endarbeit/images/raw/
+
+
