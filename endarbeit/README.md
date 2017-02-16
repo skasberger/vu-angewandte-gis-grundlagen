@@ -18,14 +18,14 @@ Die unten angeführten Data-Processing Schritte (Punkt 3-5) können selber nachg
 
 **Inhalt**
 
-1. Map your Hood
+1. [Map your Hood](#1-map-your-hood)
 2. [Setup](#2-setup)
 3. [Daten aufbereiten](#3-daten-aufbereiten)
 	- Bezirksgrenze Gries importieren
 	- OpenStreetMap Daten (Kebab-Restaurants) importieren
 	- OpenStreetMap Daten (Strassengraph) importieren
 4. [Erreichbarkeit berechnen](#4-erreichbarkeit-berechnen)
-5. [Docker Image erstellen](#5-docker-images-erstellen)
+5. [Docker Image erstellen](#5-docker-image-erstellen)
 6. [Karte erstellen](#6-karte-erstellen)
 	- Layer laden
 	- Catchment Areas darstellen
@@ -405,7 +405,7 @@ SQL-Datei in Docker-Ordner kopieren.
 cp /$ROOT_DIRECTORY/data/sql/vugis.sql $ROOT_DIRECTORY/data/docker
 ```
 
-### Importieren der SQL File in Docker
+### a) manuelles Importieren der SQL-File in Docker
 
 Wie findet man die IP raus mittels DOCKER_IMAGE_ID?
 ```bash
@@ -419,27 +419,32 @@ POSTGRES_PASSWORD=YOUR_PASSWORD
 DOCKER_IMAGE_ID=YOUR_IMAGE_ID
 ```
 
-Starten des pgrouting Docker-Containers als daemon:
+Als Basis für das Docker-Image wurde das Image [starefossen/pgrouting](https://hub.docker.com/r/starefossen/pgrouting/) verwendet. 
+
+Starten des Docker-Images als daemon:
 ```bash
-docker run --name pgrouting-daemon-2 -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -d starefossen/pgrouting
+docker run --name pgrouting-daemon -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -d starefossen/pgrouting
 ```
 
-Starten von postgreSQL von Docker-Container in Shell:
+Nun muss man in die Shell des Docker-Containers, damit man von dort die die Datenbank erstellen und dann die SQL-Datei importieren kann. 
 ```bash
-docker run -it --link pgrouting-daemon-2:postgres -v /my-data/science/academia/vu-gis-grundlagen/endarbeit/data/docker:/data --rm postgres /bin/bash
+docker run -it --link pgrouting-daemon:postgres -v $ROOT_DIRECTORY/data/docker:/data --rm postgres /bin/bash
 ```
 
-Erstellen der vugis Datenbank in postgreSQL in Docker-Container:
+Wenn dies funktioniert hat, muss in der Shell ```root@<ID>``` stehen, das einem sagt, dass man als root-User im Docker-Container angemeldet ist. Mit den root-Rechten kann nun die ```vugis```-Datenbank angelegt werden (im Docker-Container):
 ```bash
 psql -U postgres -h postgres -c "CREATE DATABASE vugis"
 ```
 
-Importieren des Dumps in postgreSQL des Docker-Containers.
+Danach importieren wir den Dumps in die angelegte Datenbank (im Docker-Container).
 ```bash
 psql -U postgres -h postgres vugis < /data/vugis.sql
 ```
 
-Das Docker-Image beinhaltet somit alle notwendigen Daten um die folgenden Analysen durchführen zu können. Dies bedeutet, dass es ausreicht das Docker-Image runter zu laden und die darin enthaltenen Daten für die nun folgenden Analysen zu nutzen.
+### b) Erstelltes Docker-Image verwenden
+Wir haben das Docker-Image auf DockerHub zur freien Nutzung zur Verfügung gestellt. Einfach runter laden, den Container starten und schon kannst du mit den Daten lokal arbeiten. 
+
+**[cheeseman/vugis](https://hub.docker.com/r/cheeseman/vugis/)**
 
 ## 6. KARTE ERSTELLEN
 
@@ -552,6 +557,26 @@ Die höher aufgelösten Orginal-Karten sind hier zu finden: [Orginal Karten](/en
 
 ## SONSTIGES
 
+### Import mit osm2po
+[osm2po](http://osm2po.de/) installieren ([A osm2po Quickstart](https://anitagraser.com/2011/12/15/an-osm2po-quickstart/)). Ist besonders für große Imports nützlich.
+
+- demo.sh kopieren, umbenennen (graz.sh) und umschreiben
+- graz.sh ausführen
+
+```
+sh graz.sh
+```
+Die dadurch erstellte SQL Datei kann nun mit psql ganz einfach importiert werden.
+
+```
+psql -h localhost -U postgres -d vugis -q -f "/my-data/apps/osm2po-5.1.0/osm2po_graz/osm2po_graz_2po_4pgr.sql"
+```
+
+Shortest Path Algorithmus testen (Node 1679 zu 4239):
+```
+CREATE TABLE route_1679_4239 AS SELECT seq, node, edge, a.cost, a.agg_cost, b.geom_way FROM pgr_dijkstra('SELECT id, source, target, cost, reverse_cost FROM osm2po_graz_2po_4pgr', 1679, 4239 ) a LEFT JOIN osm2po_graz_2po_4pgr b ON (a.edge = b.id);
+```
+
 ### Snippets
 Import OpenStreetMap Daten von Österreich (.osm.pbf) via osm2pgsql
 ```bash
@@ -567,6 +592,12 @@ Check pgRouting Version
 ```bash
 psql -U postgres -h localhost -d vugis -c "SELECT pgr_version()"
 ```
+
+Spatial Query in QGIS:
+```
+"cuisine" = 'kebab' OR "cuisine" = 'kebab,pizza' OR "cuisine" = 'kebab;pizza' OR "cuisine" = 'kebab;pizza;ice_cream' OR "cuisine" = 'kebap, pizza' OR "cuisine" = 'kebap,pizza' OR "cuisine" = 'kebap;pizza'
+```
+
 
 ## QUELLEN
 - [Docker](https://www.docker.com/)
